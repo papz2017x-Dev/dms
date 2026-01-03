@@ -134,6 +134,13 @@ export const api = {
      return categories[index];
   },
 
+  deleteCategory: async (id: string): Promise<void> => {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    categories = categories.filter((c) => c.id !== id);
+    // Also cleanup documents in that category or mark them orphaned
+    documents = documents.filter((d) => d.categoryId !== id);
+  },
+
   getDocuments: async (): Promise<Document[]> => {
     await new Promise((resolve) => setTimeout(resolve, 300));
     return [...documents];

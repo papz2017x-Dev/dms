@@ -14,13 +14,14 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Trash2, GripVertical } from "lucide-react";
-import { useState } from "react";
+import { Plus, Trash2, GripVertical, Settings2, Pencil, Trash } from "lucide-react";
+import { useState, useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 const categorySchema = z.object({
   name: z.string().min(2, "Name is required"),
@@ -34,6 +35,7 @@ export default function Categories() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
 
   const { data: categories, isLoading } = useQuery({ 
     queryKey: ['categories'], 
@@ -45,9 +47,34 @@ export default function Categories() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
       setIsOpen(false);
+      setEditingCategory(null);
       toast({
         title: "Category created",
         description: "New workflow category has been set up successfully.",
+      });
+    },
+  });
+
+  const updateCategory = useMutation({
+    mutationFn: ({ id, updates }: { id: string; updates: Partial<Category> }) => api.updateCategory(id, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      setIsOpen(false);
+      setEditingCategory(null);
+      toast({
+        title: "Category updated",
+        description: "The workflow category has been updated successfully.",
+      });
+    },
+  });
+
+  const deleteCategory = useMutation({
+    mutationFn: api.deleteCategory,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      toast({
+        title: "Category deleted",
+        variant: "destructive",
       });
     },
   });
@@ -61,17 +88,39 @@ export default function Categories() {
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, replace } = useFieldArray({
     control: form.control,
     name: "stages",
   });
 
+  useEffect(() => {
+    if (editingCategory) {
+      form.reset({
+        name: editingCategory.name,
+        description: editingCategory.description,
+        stages: editingCategory.stages.map(s => ({ value: s })),
+      });
+    } else {
+      form.reset({
+        name: "",
+        description: "",
+        stages: [{ value: "Draft" }, { value: "Review" }, { value: "Approved" }],
+      });
+    }
+  }, [editingCategory, form]);
+
   const onSubmit = (data: CategoryFormValues) => {
-    createCategory.mutate({
+    const payload = {
       name: data.name,
       description: data.description,
       stages: data.stages.map(s => s.value),
-    });
+    };
+
+    if (editingCategory) {
+      updateCategory.mutate({ id: editingCategory.id, updates: payload });
+    } else {
+      createCategory.mutate(payload);
+    }
   };
 
   if (isLoading) return <div>Loading...</div>;
@@ -83,7 +132,10 @@ export default function Categories() {
           <h1 className="text-3xl font-bold tracking-tight">Workflows</h1>
           <p className="text-muted-foreground mt-2">Manage document categories and their workflow stages.</p>
         </div>
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <Dialog open={isOpen} onOpenChange={(val) => {
+          setIsOpen(val);
+          if (!val) setEditingCategory(null);
+        }}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" /> New Category
@@ -91,9 +143,9 @@ export default function Categories() {
           </DialogTrigger>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
-              <DialogTitle>Create Category</DialogTitle>
+              <DialogTitle>{editingCategory ? "Edit Category" : "Create Category"}</DialogTitle>
               <DialogDescription>
-                Define a new document type and its linear workflow stages.
+                Define your document type and its linear workflow stages.
               </DialogDescription>
             </DialogHeader>
             
@@ -177,7 +229,7 @@ export default function Categories() {
                 </div>
 
                 <DialogFooter>
-                  <Button type="submit">Create Workflow</Button>
+                  <Button type="submit">{editingCategory ? "Save Changes" : "Create Workflow"}</Button>
                 </DialogFooter>
               </form>
             </Form>
@@ -187,10 +239,34 @@ export default function Categories() {
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {categories?.map((category) => (
-          <Card key={category.id} className="flex flex-col">
-            <CardHeader>
-              <CardTitle>{category.name}</CardTitle>
-              <CardDescription>{category.description}</CardDescription>
+          <Card key={category.id} className="flex flex-col group">
+            <CardHeader className="flex flex-row items-start justify-between space-y-0">
+              <div className="space-y-1.5">
+                <CardTitle>{category.name}</CardTitle>
+                <CardDescription>{category.description}</CardDescription>
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Settings2 className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => {
+                    setEditingCategory(category);
+                    setIsOpen(true);
+                  }}>
+                    <Pencil className="mr-2 h-4 w-4" /> Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => {
+                    if (confirm(`Are you sure you want to delete "${category.name}"? All associated documents will also be deleted.`)) {
+                      deleteCategory.mutate(category.id);
+                    }
+                  }}>
+                    <Trash className="mr-2 h-4 w-4" /> Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </CardHeader>
             <CardContent className="flex-1">
               <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Workflow Stages</h4>
@@ -218,3 +294,4 @@ export default function Categories() {
     </div>
   );
 }
+
