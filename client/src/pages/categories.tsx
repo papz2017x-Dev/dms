@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Trash2, GripVertical, Settings2, Pencil, Trash } from "lucide-react";
+import { Plus, Trash2, GripVertical, Settings2, Pencil, Trash, MoreVertical } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { z } from "zod";
@@ -181,7 +181,7 @@ export default function Categories() {
 
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <FormLabel>Workflow Stages</FormLabel>
+                    <Label>Workflow Stages</Label>
                     <Button 
                       type="button" 
                       variant="outline" 
@@ -214,7 +214,7 @@ export default function Categories() {
                               type="button"
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive no-default-hover-elevate"
                               onClick={() => remove(index)}
                             >
                               <Trash2 className="w-4 h-4" />
@@ -247,8 +247,8 @@ export default function Categories() {
               </div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Settings2 className="h-4 w-4" />
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">

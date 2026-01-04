@@ -82,8 +82,10 @@ export default function DocumentDetail() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/documents" className="hover:text-primary transition-colors flex items-center gap-1">
-          <ChevronLeft className="w-4 h-4" /> Back to Documents
+        <Link href="/documents">
+          <span className="hover:text-primary transition-colors flex items-center gap-1 cursor-pointer">
+            <ChevronLeft className="w-4 h-4" /> Back to Documents
+          </span>
         </Link>
       </div>
 

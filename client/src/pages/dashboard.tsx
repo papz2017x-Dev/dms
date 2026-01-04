@@ -127,7 +127,7 @@ export default function Dashboard() {
                   />
                   <Tooltip 
                     cursor={{fill: 'transparent'}}
-                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', backgroundColor: 'hsl(var(--card))', color: 'hsl(var(--card-foreground))' }}
                   />
                   <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} barSize={30} />
                   <Bar dataKey="completed" fill="hsl(var(--muted))" radius={[4, 4, 0, 0]} barSize={30} />
@@ -169,7 +169,9 @@ export default function Dashboard() {
               })}
               
               <Button variant="outline" className="w-full" asChild>
-                <Link href="/documents">View all documents <ArrowRight className="ml-2 h-4 w-4" /></Link>
+                <Link href="/documents">
+                  <span className="flex items-center cursor-pointer">View all documents <ArrowRight className="ml-2 h-4 w-4" /></span>
+                </Link>
               </Button>
             </div>
           </CardContent>
