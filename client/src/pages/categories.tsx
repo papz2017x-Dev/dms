@@ -26,7 +26,10 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 const categorySchema = z.object({
   name: z.string().min(2, "Name is required"),
   description: z.string().min(5, "Description is required"),
-  stages: z.array(z.object({ value: z.string().min(1, "Stage name required") })).min(2, "At least 2 stages required"),
+  stages: z.array(z.object({ 
+    value: z.string().min(1, "Stage name required"),
+    location: z.string().optional()
+  })).min(2, "At least 2 stages required"),
 });
 
 type CategoryFormValues = z.infer<typeof categorySchema>;
@@ -98,13 +101,17 @@ export default function Categories() {
       form.reset({
         name: editingCategory.name,
         description: editingCategory.description,
-        stages: editingCategory.stages.map(s => ({ value: s })),
+        stages: editingCategory.stages.map(s => ({ value: s.name, location: s.location })),
       });
     } else {
       form.reset({
         name: "",
         description: "",
-        stages: [{ value: "Draft" }, { value: "Review" }, { value: "Approved" }],
+        stages: [
+          { value: "Draft", location: "" }, 
+          { value: "Review", location: "" }, 
+          { value: "Approved", location: "" }
+        ],
       });
     }
   }, [editingCategory, form]);
@@ -113,7 +120,7 @@ export default function Categories() {
     const payload = {
       name: data.name,
       description: data.description,
-      stages: data.stages.map(s => s.value),
+      stages: data.stages.map(s => ({ name: s.value, location: s.location })),
     };
 
     if (editingCategory) {
@@ -198,17 +205,30 @@ export default function Categories() {
                          <div className="bg-muted w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium shrink-0">
                            {index + 1}
                          </div>
-                         <FormField
-                            control={form.control}
-                            name={`stages.${index}.value`}
-                            render={({ field }) => (
-                              <FormItem className="flex-1 mb-0">
-                                <FormControl>
-                                  <Input placeholder={`Stage ${index + 1}`} {...field} className="h-8" />
-                                </FormControl>
-                              </FormItem>
-                            )}
-                          />
+                         <div className="flex-1 flex flex-col gap-2">
+                           <FormField
+                              control={form.control}
+                              name={`stages.${index}.value`}
+                              render={({ field }) => (
+                                <FormItem className="mb-0">
+                                  <FormControl>
+                                    <Input placeholder={`Stage Name ${index + 1}`} {...field} className="h-8" />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={form.control}
+                              name={`stages.${index}.location`}
+                              render={({ field }) => (
+                                <FormItem className="mb-0">
+                                  <FormControl>
+                                    <Input placeholder={`Location ${index + 1} (optional)`} {...field} className="h-8 text-xs bg-muted/30" />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                          </div>
                           {fields.length > 2 && (
                             <Button
                               type="button"
@@ -273,11 +293,17 @@ export default function Categories() {
               <div className="space-y-4 relative">
                  <div className="absolute left-[11px] top-2 bottom-2 w-px bg-border" />
                  {category.stages.map((stage, idx) => (
-                   <div key={idx} className="flex items-center gap-3 relative z-10">
-                     <div className="w-6 h-6 rounded-full border bg-background flex items-center justify-center text-[10px] font-medium text-muted-foreground">
+                   <div key={idx} className="flex flex-col gap-0.5 relative z-10 ml-9">
+                     <div className="absolute -left-9 top-1 w-6 h-6 rounded-full border bg-background flex items-center justify-center text-[10px] font-medium text-muted-foreground">
                        {idx + 1}
                      </div>
-                     <span className="text-sm">{stage}</span>
+                     <span className="text-sm font-medium leading-tight">{stage.name}</span>
+                     {stage.location && (
+                       <span className="text-[10px] text-muted-foreground flex items-center gap-1 uppercase tracking-tighter">
+                         <span className="w-1 h-1 rounded-full bg-primary/40" />
+                         {stage.location}
+                       </span>
+                     )}
                    </div>
                  ))}
               </div>

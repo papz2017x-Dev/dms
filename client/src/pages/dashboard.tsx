@@ -148,7 +148,8 @@ export default function Dashboard() {
             <div className="space-y-4">
               {documents?.slice(0, 5).map(doc => {
                 const category = categories?.find(c => c.id === doc.categoryId);
-                const stageName = category?.stages[doc.currentStageIndex];
+                const stage = category?.stages[doc.currentStageIndex];
+                const stageName = stage?.name;
                 
                 return (
                   <div key={doc.id} className="flex items-center gap-4 border-b pb-4 last:border-0 last:pb-0">

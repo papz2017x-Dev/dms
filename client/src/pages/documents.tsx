@@ -323,7 +323,8 @@ export default function Documents() {
             ) : (
               filteredDocuments.map((doc) => {
                 const category = categories?.find(c => c.id === doc.categoryId);
-                const stageName = category?.stages[doc.currentStageIndex];
+                const stage = category?.stages[doc.currentStageIndex];
+                const stageName = stage?.name;
                 const progress = category ? ((doc.currentStageIndex + 1) / category.stages.length) * 100 : 0;
                 const isOverdue = new Date(doc.targetDate) < new Date() && doc.status !== 'completed';
 
@@ -340,7 +341,12 @@ export default function Documents() {
                     </TableCell>
                     <TableCell>
                       <div className="space-y-1">
-                        <span className="text-sm">{stageName}</span>
+                        <div className="flex flex-col">
+                          <span className="text-sm">{stageName}</span>
+                          {stage?.location && (
+                            <span className="text-[10px] text-muted-foreground uppercase tracking-tight">{stage.location}</span>
+                          )}
+                        </div>
                         <div className="h-1.5 w-24 bg-secondary rounded-full overflow-hidden">
                           <div 
                             className="h-full bg-primary transition-all duration-500" 

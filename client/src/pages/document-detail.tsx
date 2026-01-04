@@ -147,14 +147,10 @@ export default function DocumentDetail() {
                     const isCurrent = index === document.currentStageIndex;
                     const isFuture = index > document.currentStageIndex;
                     
-                    // Find history entry for this stage (if past or current)
-                    // Note: This logic assumes linear progression without skipping, 
-                    // or takes the latest entry for that stage name.
-                    // For a simple view, we just show state.
-                    const historyEntry = document.history.findLast(h => h.stage === stage);
+                    const historyEntry = document.history.findLast(h => h.stage === stage.name);
                     
                     return (
-                      <div key={stage} className="relative flex gap-4">
+                      <div key={stage.name} className="relative flex gap-4">
                         <div 
                           className={cn(
                             "relative z-10 flex h-8 w-8 items-center justify-center rounded-full border-2 transition-colors",
@@ -170,9 +166,16 @@ export default function DocumentDetail() {
                         
                         <div className="flex-1 pt-1">
                           <div className="flex items-center justify-between">
-                            <h4 className={cn("text-sm font-semibold", isFuture && "text-muted-foreground")}>
-                              {stage}
-                            </h4>
+                            <div className="flex flex-col">
+                              <h4 className={cn("text-sm font-semibold", isFuture && "text-muted-foreground")}>
+                                {stage.name}
+                              </h4>
+                              {stage.location && (
+                                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+                                  {stage.location}
+                                </span>
+                              )}
+                            </div>
                             {historyEntry && (
                               <span className="text-xs text-muted-foreground">
                                 {format(new Date(historyEntry.timestamp), "MMM d, h:mm a")}

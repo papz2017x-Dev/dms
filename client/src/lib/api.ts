@@ -15,11 +15,16 @@ export type Stage = {
   order: number;
 };
 
+export type CategoryStage = {
+  name: string;
+  location?: string;
+};
+
 export type Category = {
   id: string;
   name: string;
   description: string;
-  stages: string[]; // Array of stage names in order
+  stages: CategoryStage[]; // Array of stages with optional location
 };
 
 export type DocumentHistory = {
@@ -46,19 +51,37 @@ let categories: Category[] = [
     id: "cat-1",
     name: "Procurement",
     description: "Purchase orders and vendor contracts",
-    stages: ["Draft", "Manager Review", "Finance Approval", "Vendor Signed", "Completed"],
+    stages: [
+      { name: "Draft", location: "Procurement Office" },
+      { name: "Manager Review", location: "Management Hub" },
+      { name: "Finance Approval", location: "Finance Dept" },
+      { name: "Vendor Signed", location: "External" },
+      { name: "Completed", location: "Archive" }
+    ],
   },
   {
     id: "cat-2",
     name: "HR Onboarding",
     description: "New employee onboarding documents",
-    stages: ["Pending Details", "HR Review", "IT Provisioning", "Employee Signature", "Active"],
+    stages: [
+      { name: "Pending Details", location: "Recruitment Site" },
+      { name: "HR Review", location: "HR Office" },
+      { name: "IT Provisioning", location: "IT Lab" },
+      { name: "Employee Signature", location: "Employee Portal" },
+      { name: "Active", location: "Internal System" }
+    ],
   },
   {
     id: "cat-3",
     name: "Legal Contracts",
     description: "NDAs and Service Agreements",
-    stages: ["Drafting", "Internal Review", "External Review", "Finalizing", "Signed"],
+    stages: [
+      { name: "Drafting", location: "Legal Dept" },
+      { name: "Internal Review", location: "Legal Dept" },
+      { name: "External Review", location: "Client Site" },
+      { name: "Finalizing", location: "Legal Dept" },
+      { name: "Signed", location: "Digital Vault" }
+    ],
   },
 ];
 
@@ -161,7 +184,7 @@ export const api = {
       id: `doc-${Math.random().toString(36).substr(2, 9)}`,
       createdAt: new Date().toISOString(),
       currentStageIndex: 0,
-      history: [{ stage: category.stages[0], timestamp: new Date().toISOString() }],
+      history: [{ stage: category.stages[0].name, timestamp: new Date().toISOString() }],
       status: "active",
     };
     documents.push(newDoc);
@@ -198,7 +221,7 @@ export const api = {
     }
 
     const nextStageIndex = doc.currentStageIndex + 1;
-    const nextStageName = category.stages[nextStageIndex];
+    const nextStageName = category.stages[nextStageIndex].name;
     
     const updatedDoc = {
       ...doc,
@@ -226,7 +249,7 @@ export const api = {
     if (doc.currentStageIndex <= 0) return doc; // Can't regress beyond start
 
     const prevStageIndex = doc.currentStageIndex - 1;
-    const prevStageName = category.stages[prevStageIndex];
+    const prevStageName = category.stages[prevStageIndex].name;
     
     const updatedDoc = {
       ...doc,
