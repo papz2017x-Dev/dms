@@ -10,7 +10,15 @@ import Documents from "./pages/documents";
 import DocumentDetail from "./pages/document-detail";
 import Categories from "./pages/categories";
 
+import AuthPage from "./pages/auth";
+
 function Router() {
+  const user = api.getCurrentUser();
+
+  if (!user) {
+    return <AuthPage />;
+  }
+
   return (
     <Layout>
       <Switch>

@@ -91,6 +91,9 @@ export default function DocumentDetail() {
 
       <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
         <div className="space-y-1">
+          <div className="flex flex-col mb-1">
+            <span className="text-xs font-mono text-muted-foreground uppercase tracking-widest">Tracking No: {document.trackingNo}</span>
+          </div>
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-bold tracking-tight">{document.title}</h1>
             <Badge variant="outline">{category.name}</Badge>

@@ -332,6 +332,7 @@ export default function Documents() {
                   <TableRow key={doc.id} className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setLocation(`/documents/${doc.id}`)}>
                     <TableCell>
                       <div className="flex flex-col">
+                        <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">{doc.trackingNo}</span>
                         <span className="font-medium">{doc.title}</span>
                         <span className="text-xs text-muted-foreground">{doc.subject}</span>
                       </div>

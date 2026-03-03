@@ -39,6 +39,7 @@ export type DocumentHistory = {
 
 export type Document = {
   id: string;
+  trackingNo: string;
   title: string;
   subject: string;
   categoryId: string;
@@ -77,6 +78,7 @@ let categories: Category[] = [
 let documents: Document[] = [
   {
     id: "doc-1",
+    trackingNo: "TRK-2024-001",
     title: "Q1 Office Supplies",
     subject: "Bulk order for pens and paper",
     categoryId: "cat-1",
@@ -135,14 +137,19 @@ export const api = {
     return documents.find((d) => d.id === id);
   },
 
-  createDocument: async (doc: Omit<Document, "id" | "createdAt" | "currentStageIndex" | "history" | "status" | "createdBy">): Promise<Document> => {
+  createDocument: async (doc: Omit<Document, "id" | "trackingNo" | "createdAt" | "currentStageIndex" | "history" | "status" | "createdBy">): Promise<Document> => {
     if (!currentUser) throw new Error("Unauthorized");
     const category = categories.find((c) => c.id === doc.categoryId);
     if (!category) throw new Error("Invalid category");
 
+    const year = new Date().getFullYear();
+    const random = Math.floor(1000 + Math.random() * 9000);
+    const trackingNo = `TRK-${year}-${random}`;
+
     const newDoc: Document = {
       ...doc,
       id: `doc-${Math.random().toString(36).substr(2, 9)}`,
+      trackingNo,
       createdAt: new Date().toISOString(),
       createdBy: currentUser.id,
       currentStageIndex: 0,

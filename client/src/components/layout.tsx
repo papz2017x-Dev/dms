@@ -16,13 +16,18 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 
+import { api } from "@/lib/api";
+
 const SidebarContent = ({ pathname }: { pathname: string }) => {
+  const user = api.getCurrentUser();
   const links = [
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
     { href: "/documents", label: "Documents", icon: FileText },
-    { href: "/categories", label: "Workflows", icon: FolderTree },
-    // { href: "/settings", label: "Settings", icon: Settings },
   ];
+
+  if (user?.role === "superuser") {
+    links.push({ href: "/categories", label: "Workflows", icon: FolderTree });
+  }
 
   return (
     <div className="flex flex-col h-full bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
@@ -57,15 +62,27 @@ const SidebarContent = ({ pathname }: { pathname: string }) => {
       </div>
 
       <div className="p-4 border-t border-sidebar-border">
-        <div className="flex items-center gap-3">
-          <Avatar className="w-8 h-8 border border-sidebar-border">
-            <AvatarImage src="https://github.com/shadcn.png" />
-            <AvatarFallback>JD</AvatarFallback>
-          </Avatar>
-          <div className="flex flex-col">
-            <span className="text-sm font-medium">Jane Doe</span>
-            <span className="text-xs text-sidebar-foreground/60">Admin</span>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 overflow-hidden">
+            <Avatar className="w-8 h-8 border border-sidebar-border shrink-0">
+              <AvatarFallback>{user?.fullName.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+            </Avatar>
+            <div className="flex flex-col overflow-hidden">
+              <span className="text-sm font-medium truncate">{user?.fullName}</span>
+              <span className="text-xs text-sidebar-foreground/60 capitalize">{user?.role}</span>
+            </div>
           </div>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8 text-sidebar-foreground/60 hover:text-destructive"
+            onClick={() => {
+              api.logout();
+              window.location.reload();
+            }}
+          >
+            <Settings className="w-4 h-4" />
+          </Button>
         </div>
       </div>
     </div>
