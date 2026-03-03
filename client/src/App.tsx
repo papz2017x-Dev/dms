@@ -10,6 +10,7 @@ import Documents from "./pages/documents";
 import DocumentDetail from "./pages/document-detail";
 import Categories from "./pages/categories";
 
+import { api } from "./lib/api";
 import AuthPage from "./pages/auth";
 
 function Router() {
