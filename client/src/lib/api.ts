@@ -9,10 +9,13 @@ export const queryClient = new QueryClient({
   },
 });
 
-export type Stage = {
+export type UserRole = "user" | "admin" | "superuser";
+
+export type User = {
   id: string;
-  name: string;
-  order: number;
+  username: string;
+  role: UserRole;
+  fullName: string;
 };
 
 export type CategoryStage = {
@@ -24,13 +27,14 @@ export type Category = {
   id: string;
   name: string;
   description: string;
-  stages: CategoryStage[]; // Array of stages with optional location
+  stages: CategoryStage[];
 };
 
 export type DocumentHistory = {
   stage: string;
-  timestamp: string; // ISO date
+  timestamp: string;
   note?: string;
+  userId?: string;
 };
 
 export type Document = {
@@ -38,14 +42,23 @@ export type Document = {
   title: string;
   subject: string;
   categoryId: string;
-  targetDate: string; // ISO date
-  createdAt: string; // ISO date
-  currentStageIndex: number; // Index in the category's stages array
+  targetDate: string;
+  createdAt: string;
+  createdBy: string; // userId
+  currentStageIndex: number;
   history: DocumentHistory[];
   status: "active" | "completed" | "archived";
 };
 
-// Initial Data
+// Mock Auth State
+let currentUser: User | null = JSON.parse(localStorage.getItem("doc_track_user") || "null");
+
+let users: User[] = [
+  { id: "u-1", username: "user", role: "user", fullName: "Regular User" },
+  { id: "u-2", username: "admin", role: "admin", fullName: "Admin User" },
+  { id: "u-3", username: "superuser", role: "superuser", fullName: "Super User" },
+];
+
 let categories: Category[] = [
   {
     id: "cat-1",
@@ -59,30 +72,6 @@ let categories: Category[] = [
       { name: "Completed", location: "Archive" }
     ],
   },
-  {
-    id: "cat-2",
-    name: "HR Onboarding",
-    description: "New employee onboarding documents",
-    stages: [
-      { name: "Pending Details", location: "Recruitment Site" },
-      { name: "HR Review", location: "HR Office" },
-      { name: "IT Provisioning", location: "IT Lab" },
-      { name: "Employee Signature", location: "Employee Portal" },
-      { name: "Active", location: "Internal System" }
-    ],
-  },
-  {
-    id: "cat-3",
-    name: "Legal Contracts",
-    description: "NDAs and Service Agreements",
-    stages: [
-      { name: "Drafting", location: "Legal Dept" },
-      { name: "Internal Review", location: "Legal Dept" },
-      { name: "External Review", location: "Client Site" },
-      { name: "Finalizing", location: "Legal Dept" },
-      { name: "Signed", location: "Digital Vault" }
-    ],
-  },
 ];
 
 let documents: Document[] = [
@@ -93,89 +82,61 @@ let documents: Document[] = [
     categoryId: "cat-1",
     targetDate: new Date(Date.now() + 86400000 * 5).toISOString(),
     createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
+    createdBy: "u-1",
     currentStageIndex: 1,
     history: [
-      { stage: "Draft", timestamp: new Date(Date.now() - 86400000 * 2).toISOString() },
-      { stage: "Manager Review", timestamp: new Date(Date.now() - 86400000 * 1).toISOString() },
-    ],
-    status: "active",
-  },
-  {
-    id: "doc-2",
-    title: "John Doe Contract",
-    subject: "Senior Developer Role",
-    categoryId: "cat-2",
-    targetDate: new Date(Date.now() + 86400000 * 2).toISOString(),
-    createdAt: new Date(Date.now() - 86400000 * 5).toISOString(),
-    currentStageIndex: 2,
-    history: [
-      { stage: "Pending Details", timestamp: new Date(Date.now() - 86400000 * 5).toISOString() },
-      { stage: "HR Review", timestamp: new Date(Date.now() - 86400000 * 3).toISOString() },
-      { stage: "IT Provisioning", timestamp: new Date(Date.now() - 86400000 * 1).toISOString() },
-    ],
-    status: "active",
-  },
-  {
-    id: "doc-3",
-    title: "Project Alpha NDA",
-    subject: "External partner agreement",
-    categoryId: "cat-3",
-    targetDate: new Date(Date.now() - 86400000 * 1).toISOString(), // Overdue
-    createdAt: new Date(Date.now() - 86400000 * 10).toISOString(),
-    currentStageIndex: 0,
-    history: [
-      { stage: "Drafting", timestamp: new Date(Date.now() - 86400000 * 10).toISOString() },
+      { stage: "Draft", timestamp: new Date(Date.now() - 86400000 * 2).toISOString(), userId: "u-1" },
+      { stage: "Manager Review", timestamp: new Date(Date.now() - 86400000 * 1).toISOString(), userId: "u-2" },
     ],
     status: "active",
   },
 ];
 
-// Mock API Functions
 export const api = {
+  getCurrentUser: () => currentUser,
+  
+  login: async (username: string): Promise<User> => {
+    await new Promise(r => setTimeout(r, 500));
+    const user = users.find(u => u.username === username);
+    if (!user) throw new Error("User not found. Try 'user', 'admin', or 'superuser'");
+    currentUser = user;
+    localStorage.setItem("doc_track_user", JSON.stringify(user));
+    return user;
+  },
+
+  logout: () => {
+    currentUser = null;
+    localStorage.removeItem("doc_track_user");
+  },
+
+  register: async (data: { username: string, fullName: string, role: UserRole }): Promise<User> => {
+    await new Promise(r => setTimeout(r, 500));
+    const newUser = { ...data, id: `u-${Math.random().toString(36).substr(2, 9)}` };
+    users.push(newUser);
+    currentUser = newUser;
+    localStorage.setItem("doc_track_user", JSON.stringify(newUser));
+    return newUser;
+  },
+
   getCategories: async (): Promise<Category[]> => {
-    await new Promise((resolve) => setTimeout(resolve, 300));
     return [...categories];
   },
 
-  getCategory: async (id: string): Promise<Category | undefined> => {
-    await new Promise((resolve) => setTimeout(resolve, 200));
-    return categories.find((c) => c.id === id);
-  },
-
-  createCategory: async (category: Omit<Category, "id">): Promise<Category> => {
-    await new Promise((resolve) => setTimeout(resolve, 400));
-    const newCategory = { ...category, id: `cat-${Math.random().toString(36).substr(2, 9)}` };
-    categories.push(newCategory);
-    return newCategory;
-  },
-
-  updateCategory: async (id: string, updates: Partial<Category>): Promise<Category> => {
-     await new Promise((resolve) => setTimeout(resolve, 400));
-     const index = categories.findIndex((c) => c.id === id);
-     if (index === -1) throw new Error("Category not found");
-     categories[index] = { ...categories[index], ...updates };
-     return categories[index];
-  },
-
-  deleteCategory: async (id: string): Promise<void> => {
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    categories = categories.filter((c) => c.id !== id);
-    // Also cleanup documents in that category or mark them orphaned
-    documents = documents.filter((d) => d.categoryId !== id);
-  },
-
   getDocuments: async (): Promise<Document[]> => {
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    if (!currentUser) return [];
+    if (currentUser.role === "superuser") return [...documents];
+    // Users and Admins can see documents they created OR all documents? 
+    // Requirement: "user can only view the progress, create new document, edit his document and delete his own created document"
+    // Usually means they can see all but only edit theirs.
     return [...documents];
   },
 
   getDocument: async (id: string): Promise<Document | undefined> => {
-    await new Promise((resolve) => setTimeout(resolve, 200));
     return documents.find((d) => d.id === id);
   },
 
-  createDocument: async (doc: Omit<Document, "id" | "createdAt" | "currentStageIndex" | "history" | "status">): Promise<Document> => {
-    await new Promise((resolve) => setTimeout(resolve, 400));
+  createDocument: async (doc: Omit<Document, "id" | "createdAt" | "currentStageIndex" | "history" | "status" | "createdBy">): Promise<Document> => {
+    if (!currentUser) throw new Error("Unauthorized");
     const category = categories.find((c) => c.id === doc.categoryId);
     if (!category) throw new Error("Invalid category");
 
@@ -183,8 +144,9 @@ export const api = {
       ...doc,
       id: `doc-${Math.random().toString(36).substr(2, 9)}`,
       createdAt: new Date().toISOString(),
+      createdBy: currentUser.id,
       currentStageIndex: 0,
-      history: [{ stage: category.stages[0].name, timestamp: new Date().toISOString() }],
+      history: [{ stage: category.stages[0].name, timestamp: new Date().toISOString(), userId: currentUser.id }],
       status: "active",
     };
     documents.push(newDoc);
@@ -192,20 +154,32 @@ export const api = {
   },
 
   updateDocument: async (id: string, updates: Partial<Document>): Promise<Document> => {
-    await new Promise((resolve) => setTimeout(resolve, 300));
     const index = documents.findIndex((d) => d.id === id);
     if (index === -1) throw new Error("Document not found");
+    
+    // Authorization check
+    if (currentUser?.role !== "superuser" && documents[index].createdBy !== currentUser?.id) {
+       throw new Error("You can only edit your own documents");
+    }
+
     documents[index] = { ...documents[index], ...updates };
     return documents[index];
   },
 
   deleteDocument: async (id: string): Promise<void> => {
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    const doc = documents.find(d => d.id === id);
+    if (!doc) return;
+
+    if (currentUser?.role !== "superuser" && doc.createdBy !== currentUser?.id) {
+       throw new Error("You can only delete your own documents");
+    }
+
     documents = documents.filter((d) => d.id !== id);
   },
 
   advanceStage: async (id: string): Promise<Document> => {
-    await new Promise((resolve) => setTimeout(resolve, 400));
+    if (currentUser?.role === "user") throw new Error("Users cannot advance stages");
+    
     const index = documents.findIndex((d) => d.id === id);
     if (index === -1) throw new Error("Document not found");
 
@@ -214,7 +188,6 @@ export const api = {
     if (!category) throw new Error("Category not found");
 
     if (doc.currentStageIndex >= category.stages.length - 1) {
-      // Already at end, maybe mark complete?
       const updatedDoc = { ...doc, status: "completed" as const };
       documents[index] = updatedDoc;
       return updatedDoc;
@@ -228,7 +201,7 @@ export const api = {
       currentStageIndex: nextStageIndex,
       history: [
         ...doc.history,
-        { stage: nextStageName, timestamp: new Date().toISOString() },
+        { stage: nextStageName, timestamp: new Date().toISOString(), userId: currentUser?.id },
       ],
       status: nextStageIndex === category.stages.length - 1 ? "completed" as const : "active" as const
     };
@@ -238,7 +211,8 @@ export const api = {
   },
 
   regressStage: async (id: string): Promise<Document> => {
-    await new Promise((resolve) => setTimeout(resolve, 400));
+    if (currentUser?.role === "user") throw new Error("Users cannot regress stages");
+
     const index = documents.findIndex((d) => d.id === id);
     if (index === -1) throw new Error("Document not found");
 
@@ -246,7 +220,7 @@ export const api = {
     const category = categories.find((c) => c.id === doc.categoryId);
     if (!category) throw new Error("Category not found");
     
-    if (doc.currentStageIndex <= 0) return doc; // Can't regress beyond start
+    if (doc.currentStageIndex <= 0) return doc;
 
     const prevStageIndex = doc.currentStageIndex - 1;
     const prevStageName = category.stages[prevStageIndex].name;
@@ -256,9 +230,9 @@ export const api = {
       currentStageIndex: prevStageIndex,
       history: [
         ...doc.history,
-        { stage: prevStageName, timestamp: new Date().toISOString(), note: "Regressed to previous stage" },
+        { stage: prevStageName, timestamp: new Date().toISOString(), note: "Regressed", userId: currentUser?.id },
       ],
-      status: "active" as const // If it was completed, it's active again
+      status: "active" as const
     };
     
     documents[index] = updatedDoc;
