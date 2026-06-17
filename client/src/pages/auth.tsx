@@ -156,15 +156,16 @@ export default function AuthPage() {
             )}
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
+
+
+
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "Processing..." : (isLogin ? "Sign In" : "Create Account")}
+            </Button>
             <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 px-4 py-3 rounded-b-lg text-sm font-semibold">
               Please ask for an account from ICT personnels.
             </div>
-
-
-            {/*  <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Processing..." : (isLogin ? "Sign In" : "Create Account")}
-            </Button>
-            <Button
+            {/*  <Button
               type="button"
               variant="link"
               className="text-xs"
