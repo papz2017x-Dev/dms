@@ -20,7 +20,7 @@ export default function AuthPage() {
     queryFn: api.getOrgNodes,
     enabled: !isLogin, // Only fetch org nodes when registering
   });
-  
+
   const [formData, setFormData] = useState({
     username: "",
     fullName: "",
@@ -32,12 +32,12 @@ export default function AuthPage() {
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!isLogin && formData.password !== formData.confirmPassword) {
-      toast({ 
-        title: "Error", 
-        description: "Passwords do not match", 
-        variant: "destructive" 
+      toast({
+        title: "Error",
+        description: "Passwords do not match",
+        variant: "destructive"
       });
       return;
     }
@@ -60,10 +60,10 @@ export default function AuthPage() {
       setLocation("/");
       window.location.reload(); // Refresh to update UI state
     } catch (error: any) {
-      toast({ 
-        title: "Error", 
-        description: error.message, 
-        variant: "destructive" 
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
       });
     } finally {
       setLoading(false);
@@ -83,8 +83,8 @@ export default function AuthPage() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="username">Username</Label>
-              <Input 
-                id="username" 
+              <Input
+                id="username"
                 placeholder={isLogin ? "Enter your username" : "Choose a username"}
                 value={formData.username}
                 onChange={(e) => setFormData({ ...formData, username: e.target.value })}
@@ -94,8 +94,8 @@ export default function AuthPage() {
 
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input 
-                id="password" 
+              <Input
+                id="password"
                 type="password"
                 placeholder="••••••••"
                 value={formData.password}
@@ -103,13 +103,13 @@ export default function AuthPage() {
                 required
               />
             </div>
-            
+
             {!isLogin && (
               <>
                 <div className="space-y-2">
                   <Label htmlFor="confirmPassword">Confirm Password</Label>
-                  <Input 
-                    id="confirmPassword" 
+                  <Input
+                    id="confirmPassword"
                     type="password"
                     placeholder="••••••••"
                     value={formData.confirmPassword}
@@ -119,8 +119,8 @@ export default function AuthPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="fullName">Full Name</Label>
-                  <Input 
-                    id="fullName" 
+                  <Input
+                    id="fullName"
                     placeholder="John Doe"
                     value={formData.fullName}
                     onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
@@ -129,8 +129,8 @@ export default function AuthPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="position">Position</Label>
-                  <Input 
-                    id="position" 
+                  <Input
+                    id="position"
                     placeholder="e.g. Software Engineer"
                     value={formData.position}
                     onChange={(e) => setFormData({ ...formData, position: e.target.value })}
@@ -138,8 +138,8 @@ export default function AuthPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="office">Office/Department</Label>
-                  <Select 
-                    value={formData.officeId} 
+                  <Select
+                    value={formData.officeId}
                     onValueChange={(value) => setFormData({ ...formData, officeId: value })}
                   >
                     <SelectTrigger id="office">
@@ -156,17 +156,22 @@ export default function AuthPage() {
             )}
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
-            <Button type="submit" className="w-full" disabled={loading}>
+            <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 px-4 py-3 rounded-b-lg text-sm font-semibold">
+              Please ask for an account from ICT personnels.
+            </div>
+
+
+            {/*  <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Processing..." : (isLogin ? "Sign In" : "Create Account")}
             </Button>
-            <Button 
-              type="button" 
-              variant="link" 
+            <Button
+              type="button"
+              variant="link"
               className="text-xs"
               onClick={() => setIsLogin(!isLogin)}
             >
               {isLogin ? "Don't have an account? Register" : "Already have an account? Login"}
-            </Button>
+            </Button> */}
           </CardFooter>
         </form>
       </Card>
