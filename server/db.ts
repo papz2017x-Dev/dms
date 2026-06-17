@@ -9,11 +9,11 @@ function getConnectionConfig(): mysql.PoolOptions {
   // Option 1: individual MYSQL_* variables (recommended for Hostinger)
   if (process.env.MYSQL_HOST) {
     return {
-      host:     process.env.MYSQL_HOST,
-      port:     parseInt(process.env.MYSQL_PORT || "3306", 10),
-      user:     process.env.MYSQL_USER     || "",
-      password: process.env.MYSQL_PASSWORD || "",
-      database: process.env.MYSQL_DATABASE || "",
+      host: process.env.MYSQL_HOST,
+      port: parseInt(process.env.MYSQL_PORT || "3306", 10),
+      user: process.env.MYSQL_USER || "root",
+      password: process.env.MYSQL_PASSWORD || "@dmin12345",
+      database: process.env.MYSQL_DATABASE || "docu_flow",
     };
   }
 

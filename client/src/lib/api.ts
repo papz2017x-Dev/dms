@@ -196,6 +196,16 @@ export const api = {
     return user;
   },
 
+  createUser: async (data: { username: string, fullName: string, password?: string, position?: string, officeId?: string }): Promise<User> => {
+    const res = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
   getUsers: async (): Promise<User[]> => {
     const res = await fetch("/api/users");
     if (!res.ok) throw new Error(await res.text());

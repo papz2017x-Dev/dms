@@ -55,6 +55,30 @@ export default function SuperuserDashboard() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [isUserEditDialogOpen, setIsUserEditDialogOpen] = useState(false);
   const [userFormData, setUserFormData] = useState({ fullName: "", username: "", officeId: "", role: "user" as UserRole });
+  const [isRegisterDialogOpen, setIsRegisterDialogOpen] = useState(false);
+  const [registerFormData, setRegisterFormData] = useState({
+    username: "",
+    fullName: "",
+    password: "",
+    confirmPassword: "",
+    position: "",
+    officeId: "none",
+    role: "user" as UserRole,
+  });
+
+  useEffect(() => {
+    if (!isRegisterDialogOpen) {
+      setRegisterFormData({
+        username: "",
+        fullName: "",
+        password: "",
+        confirmPassword: "",
+        position: "",
+        officeId: "none",
+        role: "user",
+      });
+    }
+  }, [isRegisterDialogOpen]);
 
   const { data: users = [], isLoading: usersLoading } = useQuery({
     queryKey: ["/api/users"],
@@ -64,6 +88,34 @@ export default function SuperuserDashboard() {
   const { data: orgNodes = [], isLoading: orgLoading } = useQuery({
     queryKey: ["/api/org-nodes"],
     queryFn: api.getOrgNodes,
+  });
+
+  const registerUserMutation = useMutation({
+    mutationFn: async (data: typeof registerFormData) => {
+      if (data.password !== data.confirmPassword) {
+        throw new Error("Passwords do not match");
+      }
+      const user = await api.createUser({
+        username: data.username,
+        fullName: data.fullName,
+        password: data.password,
+        position: data.position || undefined,
+        officeId: data.officeId === "none" || !data.officeId ? undefined : data.officeId,
+      });
+      if (data.role && data.role !== "user") {
+        await api.updateUserRole(user.id, data.role);
+      }
+      return user;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/org-nodes"] });
+      setIsRegisterDialogOpen(false);
+      toast({ title: "User registered successfully" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Registration failed", description: error.message, variant: "destructive" });
+    },
   });
 
   const updateUserMutation = useMutation({
@@ -243,9 +295,15 @@ export default function SuperuserDashboard() {
 
       {activeTab === "users" && (
         <Card>
-          <CardHeader>
-            <CardTitle>Users</CardTitle>
-            <CardDescription>View and manage user roles across the platform</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+            <div>
+              <CardTitle>Users</CardTitle>
+              <CardDescription>View and manage user roles across the platform</CardDescription>
+            </div>
+            <Button className="gap-2 font-medium" onClick={() => setIsRegisterDialogOpen(true)}>
+              <Plus className="h-4 w-4" />
+              Register New User
+            </Button>
           </CardHeader>
           <CardContent>
             {usersLoading ? (
@@ -446,6 +504,114 @@ export default function SuperuserDashboard() {
             <DialogFooter className="pt-4">
               <Button type="submit" disabled={updateUserMutation.isPending} className="w-full">
                 {updateUserMutation.isPending ? "Saving Changes..." : "Update User Details"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isRegisterDialogOpen} onOpenChange={setIsRegisterDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Register New User</DialogTitle>
+            <DialogDescription>
+              Create a new user account on the platform.
+            </DialogDescription>
+          </DialogHeader>
+          <form 
+            onSubmit={(e) => {
+              e.preventDefault();
+              registerUserMutation.mutate(registerFormData);
+            }} 
+            className="space-y-4 pt-4"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="reg-fullName">Full Name</Label>
+              <Input 
+                id="reg-fullName" 
+                placeholder="e.g. John Doe"
+                value={registerFormData.fullName}
+                onChange={(e) => setRegisterFormData({ ...registerFormData, fullName: e.target.value })}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="reg-username">Username</Label>
+              <Input 
+                id="reg-username" 
+                placeholder="e.g. johndoe"
+                value={registerFormData.username}
+                onChange={(e) => setRegisterFormData({ ...registerFormData, username: e.target.value })}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="reg-password">Password</Label>
+              <Input 
+                id="reg-password" 
+                type="password"
+                placeholder="••••••••"
+                value={registerFormData.password}
+                onChange={(e) => setRegisterFormData({ ...registerFormData, password: e.target.value })}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="reg-confirmPassword">Confirm Password</Label>
+              <Input 
+                id="reg-confirmPassword" 
+                type="password"
+                placeholder="••••••••"
+                value={registerFormData.confirmPassword}
+                onChange={(e) => setRegisterFormData({ ...registerFormData, confirmPassword: e.target.value })}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="reg-position">Position</Label>
+              <Input 
+                id="reg-position" 
+                placeholder="e.g. HR Specialist"
+                value={registerFormData.position}
+                onChange={(e) => setRegisterFormData({ ...registerFormData, position: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="reg-office">Office Assignment</Label>
+              <Select 
+                value={registerFormData.officeId} 
+                onValueChange={(v) => setRegisterFormData({ ...registerFormData, officeId: v })}
+              >
+                <SelectTrigger id="reg-office" className="w-full">
+                  <SelectValue placeholder="Select Office" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Not Assigned</SelectItem>
+                  {orgNodes.map(node => (
+                    <SelectItem key={node.id} value={node.id}>{node.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="reg-role">Platform Role</Label>
+              <Select 
+                value={registerFormData.role} 
+                onValueChange={(v: UserRole) => setRegisterFormData({ ...registerFormData, role: v })}
+              >
+                <SelectTrigger id="reg-role" className="w-full">
+                  <SelectValue placeholder="Select Role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="user">User</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="superuser">Superuser</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter className="pt-4">
+              <Button type="submit" disabled={registerUserMutation.isPending} className="w-full">
+                {registerUserMutation.isPending ? "Registering..." : "Register User"}
               </Button>
             </DialogFooter>
           </form>
