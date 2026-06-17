@@ -3,6 +3,7 @@ import { api, Category, Document } from "@/lib/api";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { 
   Table, 
   TableBody, 
@@ -55,6 +56,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
+import { ensureCameraPermission } from "@/lib/nativePermissions";
 
 const documentSchema = z.object({
   title: z.string().min(2, "Title is required"),
@@ -76,25 +78,44 @@ export default function Documents() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isCreateOpen, setIsCreateOpen] = useState(isNew);
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
 
   const { data: documents, isLoading } = useQuery({ 
     queryKey: ['documents'], 
-    queryFn: api.getDocuments 
+    queryFn: api.getDocuments,
+    refetchInterval: 15000, // Auto-refresh every 15s to keep lists live across accounts
   });
 
   const { data: categories } = useQuery({ 
-    queryKey: ['categories'], 
-    queryFn: api.getCategories 
+    queryKey: ['categories', 'all'], 
+    queryFn: () => api.getCategories(true) 
   });
+
+  const { data: orgNodes } = useQuery({ 
+    queryKey: ['org-nodes'], 
+    queryFn: api.getOrgNodes 
+  });
+
+  const currentUser = api.getCurrentUser();
 
   const createDocument = useMutation({
     mutationFn: (data: DocumentFormValues) => api.createDocument({
       ...data,
       targetDate: data.targetDate.toISOString(),
     }),
-    onSuccess: (newDoc) => {
+    onSuccess: async (newDoc) => {
+      if (attachmentFile) {
+        try {
+          await api.uploadDocumentAttachment(newDoc.id, attachmentFile);
+        } catch (e) {
+          console.error("Failed to upload attachment", e);
+          toast({ title: "Warning", description: "Document created but attachment failed to upload.", variant: "destructive" });
+        }
+      }
       queryClient.invalidateQueries({ queryKey: ['documents'] });
       setIsCreateOpen(false);
+      setAttachmentFile(null);
+      form.reset();
       toast({
         title: "Document created",
         description: "Document has been initialized in the first workflow stage.",
@@ -128,16 +149,53 @@ export default function Documents() {
   };
 
   const filteredDocuments = useMemo(() => {
-    if (!documents) return [];
-    return documents.filter(doc => {
-      const matchesSearch = doc.title.toLowerCase().includes(search.toLowerCase()) || 
-                            doc.subject.toLowerCase().includes(search.toLowerCase());
-      const matchesCategory = categoryFilter === "all" || doc.categoryId === categoryFilter;
-      const matchesStatus = statusFilter === "all" || doc.status === statusFilter;
+    let docs = documents || [];
+
+    // Chain-of-Custody Visibility Logic
+    if (currentUser?.role !== "superuser") {
+      const officeMap = orgNodes?.reduce((acc, node) => {
+        acc[node.id] = node.name;
+        return acc;
+      }, {} as Record<string, string>) || {};
       
-      return matchesSearch && matchesCategory && matchesStatus;
-    });
-  }, [documents, search, categoryFilter, statusFilter]);
+      const userOfficeName = currentUser?.officeId ? officeMap[currentUser.officeId] : "";
+
+      docs = docs.filter(doc => {
+        // ALWAYS show if created by me
+        if (doc.createdBy === currentUser?.id) return true;
+        
+        // Hide unsubmitted drafts from everyone else
+        if (doc.status === "draft") return false;
+
+        const category = categories?.find(c => c.id === doc.categoryId);
+        if (!category) return false;
+
+        // Check stages up to the current progress. 
+        // Future stages will NEVER match, enforcing the rule: "should not appear to the next stage unless forwarded"
+        for (let i = 0; i <= doc.currentStageIndex; i++) {
+          const stage = category.stages[i];
+          if (stage.location === userOfficeName) return true;
+        }
+
+        return false;
+      });
+    }
+
+    if (search) {
+      docs = docs.filter(doc => 
+        doc.title.toLowerCase().includes(search.toLowerCase()) ||
+        doc.subject.toLowerCase().includes(search.toLowerCase()) ||
+        doc.trackingNo.toLowerCase().includes(search.toLowerCase())
+      );
+    }
+    if (categoryFilter !== "all") {
+      docs = docs.filter(doc => doc.categoryId === categoryFilter);
+    }
+    if (statusFilter !== "all") {
+      docs = docs.filter(doc => doc.status === statusFilter);
+    }
+    return docs;
+  }, [documents, search, categoryFilter, statusFilter, currentUser, categories, orgNodes]);
 
   if (isLoading) return <div>Loading...</div>;
 
@@ -255,6 +313,34 @@ export default function Documents() {
                     </FormItem>
                   )}
                 />
+                
+                <div className="space-y-2">
+                  <Label>Attachment (Optional)</Label>
+                  <Input 
+                    type="file" 
+                    accept="image/*,.pdf,.doc,.docx" 
+                    capture="environment"
+                    onClick={async (e) => {
+                      const ok = await ensureCameraPermission();
+                      if (!ok) {
+                        e.preventDefault();
+                        toast({ title: "Permission required", description: "Camera permission was not granted.", variant: "destructive" });
+                        return;
+                      }
+                    }}
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files.length > 0) {
+                        setAttachmentFile(e.target.files[0]);
+                      } else {
+                        setAttachmentFile(null);
+                      }
+                    }} 
+                  />
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    You can upload a document file or use your camera to take a photo of the physical document.
+                  </p>
+                </div>
+
                 <DialogFooter>
                   <Button type="submit">Create Document</Button>
                 </DialogFooter>
@@ -334,7 +420,11 @@ export default function Documents() {
                       <div className="flex flex-col">
                         <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">{doc.trackingNo}</span>
                         <span className="font-medium">{doc.title}</span>
-                        <span className="text-xs text-muted-foreground">{doc.subject}</span>
+                        <span className="text-xs text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">
+                          {currentUser?.officeId === doc.officeId || currentUser?.role === 'superuser' 
+                            ? doc.subject 
+                            : "******** (Restricted)"}
+                        </span>
                       </div>
                     </TableCell>
                     <TableCell>

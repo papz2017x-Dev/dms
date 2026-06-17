@@ -9,6 +9,9 @@ import Dashboard from "./pages/dashboard";
 import Documents from "./pages/documents";
 import DocumentDetail from "./pages/document-detail";
 import Categories from "./pages/categories";
+import SuperuserDashboard from "@/pages/superuser-dashboard";
+import SuperuserUploads from "@/pages/superuser-uploads";
+import UserDashboard from "@/pages/user-dashboard";
 
 import { api } from "./lib/api";
 import AuthPage from "./pages/auth";
@@ -20,13 +23,28 @@ function Router() {
     return <AuthPage />;
   }
 
+  // Redirect regular users from dashboard to their user dashboard
+  if (user.role === "user" && window.location.pathname === "/") {
+    window.location.replace("/user-dashboard");
+    return null; // Prevent rendering the old dashboard
+  }
+
   return (
     <Layout>
       <Switch>
         <Route path="/" component={Dashboard} />
+        <Route path="/user-dashboard" component={UserDashboard} />
         <Route path="/documents" component={Documents} />
         <Route path="/documents/:id" component={DocumentDetail} />
-        <Route path="/categories" component={Categories} />
+        {(user.role === "superuser" || user.role === "admin") && (
+          <Route path="/categories" component={Categories} />
+        )}
+        {user.role === "superuser" && (
+          <>
+            <Route path="/superuser" component={SuperuserDashboard} />
+            <Route path="/superuser/uploads" component={SuperuserUploads} />
+          </>
+        )}
         <Route component={NotFound} />
       </Switch>
     </Layout>

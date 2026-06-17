@@ -1,7 +1,13 @@
+import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import { db } from "./db";
+import { users, categories } from "@shared/schema";
+import { eq } from "drizzle-orm";
+import path from "path";
+import { migrate } from "drizzle-orm/mysql2/migrator";
 
 const app = express();
 const httpServer = createServer(app);
@@ -21,6 +27,9 @@ app.use(
 );
 
 app.use(express.urlencoded({ extended: false }));
+
+// Serve uploaded files statically
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -60,6 +69,64 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Run database migrations in production
+  if (process.env.NODE_ENV === "production") {
+    try {
+      log("Running database migrations...", "db");
+      await migrate(db, {
+        migrationsFolder: path.resolve(process.cwd(), "migrations"),
+      });
+      log("Database migrations completed successfully.", "db");
+    } catch (migErr: any) {
+      // If tables already exist (e.g. database was imported manually),
+      // skip migrations gracefully and continue startup.
+      if (migErr?.code === "ER_TABLE_EXISTS_ERROR") {
+        log("Tables already exist — skipping migrations.", "db");
+      } else {
+        log(`Database migration failed: ${migErr}`, "db");
+        throw migErr;
+      }
+    }
+  }
+
+  // Seeding superuser if it doesn't exist
+  try {
+    const [existingSuperUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.username, "superuser"));
+
+    if (!existingSuperUser) {
+      log("Creating default superuser...");
+      await db.insert(users).values({
+        username: "superuser",
+        password: "P455w0rd!",
+        fullName: "System Super User",
+        role: "superuser",
+      });
+      log("Default superuser created successfully.");
+    }
+
+    const existingCategories = await db.select().from(categories);
+    if (existingCategories.length === 0) {
+      log("Creating initial categories...");
+      await db.insert(categories).values({
+        name: "Standard Procurement",
+        description: "Default procurement workflow",
+        stages: [
+          { name: "Draft", location: "Originator" },
+          { name: "Department Head Review", location: "Dept Office" },
+          { name: "Finance Approval", location: "Finance Dept" },
+          { name: "Procurement Processing", location: "Procurement Hub" },
+          { name: "Completed", location: "Archive" }
+        ],
+      });
+      log("Initial categories created.");
+    }
+  } catch (err) {
+    log(`Seeding check failed: ${err}`, "db");
+  }
+
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -84,12 +151,11 @@ app.use((req, res, next) => {
   // Other ports are firewalled. Default to 5000 if not specified.
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || "5000", 10);
+  const port = parseInt(process.env.PORT || "3000", 10);
   httpServer.listen(
     {
       port,
       host: "0.0.0.0",
-      reusePort: true,
     },
     () => {
       log(`serving on port ${port}`);

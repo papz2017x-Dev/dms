@@ -1,37 +1,59 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { api } from "@/lib/api";
+import { api, type OrgNode } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
 
 export default function AuthPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
+
+  const { data: orgNodes = [] } = useQuery<OrgNode[]>({
+    queryKey: ["/api/org-nodes"],
+    queryFn: api.getOrgNodes,
+    enabled: !isLogin, // Only fetch org nodes when registering
+  });
   
   const [formData, setFormData] = useState({
     username: "",
     fullName: "",
-    role: "user" as const
+    password: "",
+    confirmPassword: "",
+    position: "",
+    officeId: "",
   });
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!isLogin && formData.password !== formData.confirmPassword) {
+      toast({ 
+        title: "Error", 
+        description: "Passwords do not match", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       if (isLogin) {
-        await api.login(formData.username);
+        await api.login(formData.username, formData.password);
         toast({ title: "Welcome back!" });
       } else {
         await api.register({
           username: formData.username,
           fullName: formData.fullName,
-          role: formData.role as any
+          password: formData.password,
+          position: formData.position || undefined,
+          officeId: formData.officeId || undefined,
         });
         toast({ title: "Account created!" });
       }
@@ -63,16 +85,38 @@ export default function AuthPage() {
               <Label htmlFor="username">Username</Label>
               <Input 
                 id="username" 
-                placeholder={isLogin ? "user, admin, or superuser" : "Choose a username"}
+                placeholder={isLogin ? "Enter your username" : "Choose a username"}
                 value={formData.username}
                 onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                 required
               />
-              {isLogin && <p className="text-[10px] text-muted-foreground italic">Tip: Use 'user', 'admin', or 'superuser' to test roles.</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input 
+                id="password" 
+                type="password"
+                placeholder="••••••••"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                required
+              />
             </div>
             
             {!isLogin && (
               <>
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Confirm Password</Label>
+                  <Input 
+                    id="confirmPassword" 
+                    type="password"
+                    placeholder="••••••••"
+                    value={formData.confirmPassword}
+                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                    required
+                  />
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="fullName">Full Name</Label>
                   <Input 
@@ -84,18 +128,27 @@ export default function AuthPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="role">Role</Label>
+                  <Label htmlFor="position">Position</Label>
+                  <Input 
+                    id="position" 
+                    placeholder="e.g. Software Engineer"
+                    value={formData.position}
+                    onChange={(e) => setFormData({ ...formData, position: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="office">Office/Department</Label>
                   <Select 
-                    value={formData.role} 
-                    onValueChange={(v: any) => setFormData({ ...formData, role: v })}
+                    value={formData.officeId} 
+                    onValueChange={(value) => setFormData({ ...formData, officeId: value })}
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a role" />
+                    <SelectTrigger id="office">
+                      <SelectValue placeholder="Select your office/department" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="user">User (View/Create only)</SelectItem>
-                      <SelectItem value="admin">Admin (Sign/Advance)</SelectItem>
-                      <SelectItem value="superuser">Superuser (Full Control)</SelectItem>
+                      {orgNodes.map(node => (
+                        <SelectItem key={node.id} value={node.id}>{node.name}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
